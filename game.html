@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trackside: Skyline Sprint</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    :root { color-scheme: dark; --ink: #f2f1e9; --muted: #98a49b; --lime: #c5f36b; --coral: #ff775e; --line: #34403a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: #101614; font-family: 'Space Grotesk', 'Trebuchet MS', sans-serif; }
+    .shell { width: min(100%, 1120px); margin: 0 auto; padding: 21px 22px 18px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 17px; }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; border: 1px solid #718157; color: var(--lime); transform: rotate(-7deg); font-size: 22px; font-weight: 700; }
+    .brand-name { font-size: 14px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+    .brand-sub { margin-top: 2px; color: var(--muted); font: 10px 'DM Mono', monospace; letter-spacing: 1.4px; text-transform: uppercase; }
+    .status { display: flex; align-items: center; gap: 8px; color: #c9d3c9; font: 11px 'DM Mono', monospace; letter-spacing: .6px; text-transform: uppercase; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px #c5f36b88; }
+    .game-frame { position: relative; overflow: hidden; border: 1px solid #46534a; background: #17201b; }
+    .canvas-wrap { position: relative; aspect-ratio: 16 / 9; width: 100%; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .hud { position: absolute; z-index: 2; inset: 15px 17px auto; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+    .hud-group { display: flex; gap: 8px; }
+    .metric { min-width: 86px; padding: 8px 11px; border: 1px solid #ffffff24; background: #101614ba; backdrop-filter: blur(8px); }
+    .metric-label { color: #aeb9ac; font: 9px 'DM Mono', monospace; letter-spacing: 1.2px; text-transform: uppercase; }
+    .metric-value { margin-top: 2px; color: var(--ink); font-size: 20px; font-weight: 700; line-height: 1; }
+    .metric-value.lime { color: var(--lime); }
+    .overlay { position: absolute; z-index: 3; inset: 0; display: grid; place-items: center; padding: 20px; background: linear-gradient(90deg, #101614bd, #10161463 60%, #1016149c); text-align: center; transition: opacity .2s ease; }
+    .overlay.hidden { opacity: 0; pointer-events: none; }
+    .overlay-card { width: min(100%, 430px); }
+    .eyebrow { color: var(--lime); font: 11px 'DM Mono', monospace; letter-spacing: 2.5px; text-transform: uppercase; }
+    h1 { margin: 9px 0 8px; font-size: clamp(35px, 7vw, 68px); line-height: .94; letter-spacing: 0; text-transform: uppercase; }
+    h1 span { color: var(--lime); }
+    .overlay-copy { max-width: 350px; margin: 13px auto 20px; color: #d0d8ce; font-size: 14px; line-height: 1.55; }
+    .primary { min-height: 46px; padding: 0 22px; border: 0; background: var(--lime); color: #182016; font: 700 13px 'Space Grotesk', sans-serif; letter-spacing: .8px; text-transform: uppercase; cursor: pointer; transition: transform .15s ease, background .15s ease; }
+    .primary:hover { transform: translateY(-2px); background: #d5ff85; }
+    .primary:focus-visible, .control:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+    .controls-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 13px; }
+    .keys { display: flex; align-items: center; flex-wrap: wrap; gap: 13px; color: var(--muted); font: 10px 'DM Mono', monospace; text-transform: uppercase; }
+    .key { display: inline-grid; place-items: center; min-width: 23px; height: 22px; margin-right: 4px; padding: 0 5px; border: 1px solid #536057; color: #f2f1e9; font: 10px 'DM Mono', monospace; }
+    .actions { display: flex; gap: 6px; }
+    .control { min-width: 38px; height: 34px; padding: 0 9px; border: 1px solid #46534a; background: #18211c; color: var(--ink); font: 11px 'DM Mono', monospace; cursor: pointer; }
+    .control:hover { border-color: var(--lime); color: var(--lime); }
+    .mobile-controls { display: none; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 11px; }
+    .mobile-controls button { min-height: 44px; border: 1px solid #46534a; background: #18211c; color: var(--ink); font: 700 12px 'Space Grotesk', sans-serif; text-transform: uppercase; touch-action: none; }
+    .mobile-controls button:active { background: var(--lime); color: #182016; }
+    .bottomline { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; color: #718077; font: 9px 'DM Mono', monospace; letter-spacing: .7px; text-transform: uppercase; }
+    @media (max-width: 600px) {
+      .shell { padding: 12px 9px; }
+      .topbar { margin-bottom: 10px; }
+      .brand-mark { width: 32px; height: 32px; flex-basis: 32px; }
+      .brand-name { font-size: 12px; }
+      .brand-sub { font-size: 8px; }
+      .status { font-size: 9px; }
+      .hud { inset: 7px 7px auto; }
+      .metric { min-width: 58px; padding: 5px 6px; }
+      .metric-label { font-size: 7px; letter-spacing: .6px; }
+      .metric-value { font-size: 15px; }
+      .overlay-copy { margin: 8px auto 12px; font-size: 12px; }
+      .eyebrow { font-size: 9px; }
+      .primary { min-height: 38px; padding: 0 15px; font-size: 11px; }
+      .keys { gap: 7px; font-size: 8px; }
+      .key { min-width: 19px; height: 19px; font-size: 8px; }
+      .actions { display: none; }
+      .mobile-controls { display: grid; }
+      .bottomline { font-size: 8px; }
+    }
+    @media (max-width: 390px) {
+      .status { display: none; }
+      .keys { display: none; }
+      .bottomline { margin-top: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">↗</div>
+        <div><div class="brand-name">Trackside</div><div class="brand-sub">Skyline Sprint · Arcade Run</div></div>
+      </div>
+      <div class="status"><span class="status-dot"></span><span id="status-text">Run ready</span></div>
+    </header>
+    <section class="game-frame" aria-label="Skyline Sprint game">
+      <div class="canvas-wrap">
+        <canvas id="game" width="960" height="540" aria-label="Three-lane endless runner"></canvas>
+        <div class="hud">
+          <div class="hud-group">
+            <div class="metric"><div class="metric-label">Distance</div><div class="metric-value" id="score">00000</div></div>
+            <div class="metric"><div class="metric-label">Tokens</div><div class="metric-value lime" id="tokens">0</div></div>
+          </div>
+          <div class="metric"><div class="metric-label">Best run</div><div class="metric-value" id="best">0</div></div>
+        </div>
+        <div class="overlay" id="overlay">
+          <div class="overlay-card">
+            <div class="eyebrow" id="eyebrow">The city is your track</div>
+            <h1 id="headline">Skyline<br><span>Sprint</span></h1>
+            <p class="overlay-copy" id="overlay-copy">Switch lanes, clear barriers, duck under signs, and scoop up tokens. How far can you make it?</p>
+            <button class="primary" id="start-button">Start your run</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="controls-row">
+      <div class="keys" aria-label="Keyboard controls">
+        <span><b class="key">←</b><b class="key">→</b> Switch</span>
+        <span><b class="key">↑</b> Jump</span>
+        <span><b class="key">↓</b> Slide</span>
+        <span><b class="key">P</b> Pause</span>
+      </div>
+      <div class="actions">
+        <button class="control" id="pause-button" aria-label="Pause game" title="Pause / resume (P)">Ⅱ Pause</button>
+        <button class="control" id="restart-button" aria-label="Restart game" title="Start a new run">↻ New run</button>
+      </div>
+    </div>
+    <div class="mobile-controls" aria-label="Touch controls">
+      <button data-action="left" aria-label="Move left">← Left</button>
+      <button data-action="jump" aria-label="Jump">↑ Jump</button>
+      <button data-action="slide" aria-label="Slide">↓ Slide</button>
+      <button data-action="right" aria-label="Move right">Right →</button>
+    </div>
+    <footer class="bottomline"><span>Stay sharp. Keep moving.</span><span>Original arcade runner</span></footer>
+  </main>
+  <script>
+    (() => {
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const images = {};
+      const imageSources = {
+        runner: '__RUNNER__', train: '__TRAIN__', hurdle: '__HURDLE__', token: '__TOKEN__'
+      };
+      for (const [name, src] of Object.entries(imageSources)) {
+        images[name] = new Image();
+        images[name].src = src;
+      }
+
+      const ui = {
+        overlay: document.getElementById('overlay'),
+        eyebrow: document.getElementById('eyebrow'),
+        headline: document.getElementById('headline'),
+        copy: document.getElementById('overlay-copy'),
+        start: document.getElementById('start-button'),
+        score: document.getElementById('score'),
+        tokens: document.getElementById('tokens'),
+        best: document.getElementById('best'),
+        status: document.getElementById('status-text'),
+        pause: document.getElementById('pause-button')
+      };
+      const state = {
+        mode: 'ready', lane: 1, score: 0, tokens: 0, best: 0, speed: 0.26,
+        jump: 0, slide: 0, objects: [], spawnIn: 0, roadOffset: 0, elapsed: 0
+      };
+      const readBest = () => {
+        try { return Number(localStorage.getItem('trackside-best') || 0); }
+        catch { return 0; }
+      };
+      state.best = readBest();
+      ui.best.textContent = state.best;
+      let previousTime = 0;
+      let audioContext;
+
+      function tone(frequency, duration = 0.09, type = 'sine') {
+        try {
+          audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = type;
+          oscillator.frequency.value = frequency;
+          gain.gain.setValueAtTime(0.055, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+          oscillator.connect(gain).connect(audioContext.destination);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + duration);
+        } catch { /* Audio is optional; gameplay remains available without it. */ }
+      }
+
+      function showOverlay(kind) {
+        ui.overlay.classList.remove('hidden');
+        if (kind === 'ready') {
+          ui.eyebrow.textContent = 'The city is your track';
+          ui.headline.innerHTML = 'Skyline<br><span>Sprint</span>';
+          ui.copy.textContent = 'Switch lanes, clear barriers, duck under signs, and scoop up tokens. How far can you make it?';
+          ui.start.textContent = 'Start your run';
+        } else if (kind === 'paused') {
+          ui.eyebrow.textContent = 'Take a breather';
+          ui.headline.innerHTML = 'Run<br><span>paused</span>';
+          ui.copy.textContent = 'Your track will be right here when you are ready.';
+          ui.start.textContent = 'Resume run';
+        } else {
+          ui.eyebrow.textContent = 'The line ends here';
+          ui.headline.innerHTML = 'Nice<br><span>run</span>';
+          ui.copy.textContent = `Distance ${Math.floor(state.score)} m · ${state.tokens} tokens. Give it another go?`;
+          ui.start.textContent = 'Run it back';
+        }
+      }
+
+      function resetRun() {
+        state.mode = 'running';
+        state.lane = 1;
+        state.score = 0;
+        state.tokens = 0;
+        state.speed = 0.26;
+        state.jump = 0;
+        state.slide = 0;
+        state.objects = [];
+        state.spawnIn = 0.5;
+        state.elapsed = 0;
+        ui.overlay.classList.add('hidden');
+        ui.status.textContent = 'On the move';
+        ui.pause.textContent = 'Ⅱ Pause';
+        tone(520, 0.1);
+      }
+
+      function endRun() {
+        state.mode = 'over';
+        ui.status.textContent = 'Run complete';
+        ui.pause.textContent = 'Ⅱ Pause';
+        tone(170, 0.28, 'triangle');
+        if (state.score > state.best) {
+          state.best = Math.floor(state.score);
+          try { localStorage.setItem('trackside-best', String(state.best)); } catch { /* Storage is optional. */ }
+          ui.best.textContent = state.best;
+        }
+        showOverlay('over');
+      }
+
+      function pauseRun() {
+        if (state.mode === 'running') {
+          state.mode = 'paused';
+          ui.status.textContent = 'Paused';
+          ui.pause.textContent = '▶ Resume';
+          showOverlay('paused');
+        } else if (state.mode === 'paused') {
+          state.mode = 'running';
+          ui.status.textContent = 'On the move';
+          ui.pause.textContent = 'Ⅱ Pause';
+          ui.overlay.classList.add('hidden');
+        }
+      }
+
+      function act(action) {
+        if (state.mode !== 'running') return;
+        if (action === 'left') state.lane = Math.max(0, state.lane - 1);
+        if (action === 'right') state.lane = Math.min(2, state.lane + 1);
+        if (action === 'jump' && state.jump <= 0) {
+          state.jump = 0.88;
+          state.slide = 0;
+          tone(420, 0.06, 'triangle');
+        }
+        if (action === 'slide' && state.slide <= 0) {
+          state.slide = 0.62;
+          state.jump = 0;
+        }
+      }
+
+      function spawnRow() {
+        const blockedLane = Math.floor(Math.random() * 3);
+        const obstacleTypes = ['train', 'hurdle', 'sign'];
+        const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+        state.objects.push({ type, lane: blockedLane, z: 0, checked: false });
+        for (let lane = 0; lane < 3; lane += 1) {
+          if (lane !== blockedLane && Math.random() > 0.22) {
+            state.objects.push({ type: 'token', lane, z: 0.04, checked: false });
+          }
+        }
+        state.spawnIn = Math.max(0.74, 1.08 - state.speed * 0.48) + Math.random() * 0.22;
+      }
+
+      function laneX(lane, z = 1) {
+        return 480 + (lane - 1) * (20 + z * 165);
+      }
+
+      function drawBackground() {
+        const sky = ctx.createLinearGradient(0, 0, 0, 360);
+        sky.addColorStop(0, '#334d45');
+        sky.addColorStop(0.54, '#bf8460');
+        sky.addColorStop(1, '#e6a16a');
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, 960, 540);
+        ctx.fillStyle = '#f7d391';
+        ctx.beginPath();
+        ctx.arc(740, 133, 41, 0, Math.PI * 2);
+        ctx.fill();
+
+        const farBuildings = [
+          [0, 177, 102, 182], [95, 203, 102, 156], [188, 160, 87, 199],
+          [263, 194, 121, 165], [682, 197, 87, 165], [758, 153, 98, 205], [844, 183, 116, 178]
+        ];
+        for (const [x, y, width, height] of farBuildings) {
+          ctx.fillStyle = '#34483d';
+          ctx.fillRect(x, y, width, height);
+          ctx.fillStyle = '#d4a36d';
+          for (let wx = x + 12; wx < x + width - 7; wx += 21) {
+            for (let wy = y + 15; wy < y + height - 9; wy += 25) {
+              ctx.globalAlpha = 0.2 + ((wx + wy) % 3) * 0.09;
+              ctx.fillRect(wx, wy, 7, 10);
+            }
+          }
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = '#52674c';
+        ctx.fillRect(0, 329, 960, 36);
+
+        const road = ctx.createLinearGradient(0, 160, 0, 540);
+        road.addColorStop(0, '#4d5144');
+        road.addColorStop(0.55, '#303832');
+        road.addColorStop(1, '#1b231f');
+        ctx.fillStyle = road;
+        ctx.beginPath();
+        ctx.moveTo(480, 155);
+        ctx.lineTo(138, 540);
+        ctx.lineTo(822, 540);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#b4aa81';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(480, 155); ctx.lineTo(138, 540);
+        ctx.moveTo(480, 155); ctx.lineTo(822, 540);
+        ctx.stroke();
+
+        const offset = (state.roadOffset % 1 + 1) % 1;
+        for (let i = 0; i < 13; i += 1) {
+          const progress = (i / 13 + offset) % 1;
+          const y = 160 + progress * 380;
+          const width = 7 + progress * 330;
+          ctx.strokeStyle = `rgba(202, 183, 136, ${0.12 + progress * 0.2})`;
+          ctx.lineWidth = 1 + progress * 3;
+          ctx.beginPath();
+          ctx.moveTo(480 - width, y);
+          ctx.lineTo(480 + width, y);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(210, 201, 159, .62)';
+        ctx.lineWidth = 2;
+        for (const bottomX of [366, 594]) {
+          ctx.beginPath(); ctx.moveTo(480, 155); ctx.lineTo(bottomX, 540); ctx.stroke();
+        }
+        const vignette = ctx.createRadialGradient(480, 260, 100, 480, 270, 620);
+        vignette.addColorStop(0, 'transparent');
+        vignette.addColorStop(1, '#10161466');
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, 960, 540);
+      }
+
+      function drawObject(object) {
+        const x = laneX(object.lane, object.z);
+        const y = 164 + object.z * 330;
+        const scale = 0.22 + object.z * 0.88;
+        if (object.type === 'token') {
+          const size = 38 * scale;
+          if (images.token.complete && images.token.naturalWidth) {
+            ctx.drawImage(images.token, x - size / 2, y - size, size, size);
+          }
+          return;
+        }
+        if (object.type === 'train' && images.train.complete && images.train.naturalWidth) {
+          const width = 120 * scale;
+          const height = 104 * scale;
+          ctx.drawImage(images.train, x - width / 2, y - height, width, height);
+        } else if (object.type === 'hurdle' && images.hurdle.complete && images.hurdle.naturalWidth) {
+          const width = 98 * scale;
+          const height = 68 * scale;
+          ctx.drawImage(images.hurdle, x - width / 2, y - height, width, height);
+        } else {
+          const width = 106 * scale;
+          const height = 86 * scale;
+          ctx.fillStyle = '#352c28';
+          ctx.fillRect(x - width / 2, y - height, width, height);
+          ctx.fillStyle = '#f2a66d';
+          ctx.fillRect(x - width / 2 + 8 * scale, y - height + 10 * scale, width - 16 * scale, 8 * scale);
+          ctx.fillStyle = '#b8d17a';
+          ctx.fillRect(x - width / 2 + 10 * scale, y - 20 * scale, width - 20 * scale, 10 * scale);
+        }
+      }
+
+      function drawRunner() {
+        const x = laneX(state.lane, 1);
+        let lift = 0;
+        if (state.jump > 0) {
+          const progress = 1 - state.jump / 0.88;
+          lift = Math.sin(progress * Math.PI) * 92;
+        }
+        const sliding = state.slide > 0;
+        const width = sliding ? 86 : 70;
+        const height = sliding ? 62 : 104;
+        const y = 479 - height - lift;
+        ctx.fillStyle = '#10161466';
+        ctx.beginPath();
+        ctx.ellipse(x, 481, sliding ? 44 : 29, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (images.runner.complete && images.runner.naturalWidth) {
+          ctx.drawImage(images.runner, x - width / 2, y, width, height);
+        } else {
+          ctx.fillStyle = '#e57658';
+          ctx.fillRect(x - 18, y, 36, height);
+        }
+      }
+
+      function update(delta) {
+        if (state.mode !== 'running') return;
+        state.elapsed += delta;
+        state.score += delta * state.speed * 64;
+        state.speed = Math.min(0.48, 0.26 + state.elapsed * 0.0025);
+        state.roadOffset += delta * state.speed * 2.7;
+        state.jump = Math.max(0, state.jump - delta);
+        state.slide = Math.max(0, state.slide - delta);
+        state.spawnIn -= delta;
+        if (state.spawnIn <= 0) spawnRow();
+
+        for (const object of state.objects) {
+          object.z += delta * state.speed;
+          if (object.checked || object.z < 0.88 || object.z > 0.98 || object.lane !== state.lane) continue;
+          object.checked = true;
+          if (object.type === 'token') {
+            state.tokens += 1;
+            tone(790 + Math.min(state.tokens, 12) * 22, 0.07, 'sine');
+          } else if (object.type === 'hurdle' && state.jump > 0.1) {
+            continue;
+          } else if (object.type === 'sign' && state.slide > 0.1) {
+            continue;
+          } else {
+            endRun();
+            break;
+          }
+        }
+        state.objects = state.objects.filter((object) => object.z < 1.12);
+        ui.score.textContent = String(Math.floor(state.score)).padStart(5, '0');
+        ui.tokens.textContent = state.tokens;
+      }
+
+      function render() {
+        drawBackground();
+        const ordered = [...state.objects].sort((a, b) => a.z - b.z);
+        for (const object of ordered) drawObject(object);
+        drawRunner();
+        if (state.mode === 'ready') {
+          ctx.fillStyle = '#10161424';
+          ctx.fillRect(0, 0, 960, 540);
+        }
+      }
+
+      function frame(time) {
+        const delta = Math.min((time - previousTime) / 1000 || 0, 0.04);
+        previousTime = time;
+        update(delta);
+        render();
+        requestAnimationFrame(frame);
+      }
+
+      ui.start.addEventListener('click', () => {
+        if (state.mode === 'paused') pauseRun();
+        else resetRun();
+      });
+      ui.pause.addEventListener('click', pauseRun);
+      document.getElementById('restart-button').addEventListener('click', resetRun);
+      document.addEventListener('keydown', (event) => {
+        const keys = {
+          ArrowLeft: 'left', a: 'left', A: 'left',
+          ArrowRight: 'right', d: 'right', D: 'right',
+          ArrowUp: 'jump', w: 'jump', W: 'jump', ' ': 'jump',
+          ArrowDown: 'slide', s: 'slide', S: 'slide'
+        };
+        if (event.key === 'p' || event.key === 'P') {
+          event.preventDefault();
+          pauseRun();
+          return;
+        }
+        const action = keys[event.key];
+        if (action) {
+          event.preventDefault();
+          if (state.mode === 'ready' && action === 'jump') resetRun();
+          else act(action);
+        }
+        if (event.key === 'Enter' && state.mode !== 'running') {
+          if (state.mode === 'paused') pauseRun(); else resetRun();
+        }
+      });
+      document.querySelectorAll('[data-action]').forEach((button) => {
+        const action = button.dataset.action;
+        button.addEventListener('pointerdown', (event) => {
+          event.preventDefault();
+          if (state.mode === 'ready') resetRun();
+          act(action);
+        });
+      });
+
+      showOverlay('ready');
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
