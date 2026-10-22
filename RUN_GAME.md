@@ -1,6 +1,6 @@
 # Trackside: Skyline Sprint
 
-An original, single-player endless runner built with Streamlit. Switch between three lanes, jump over barriers, slide under signs, and collect tokens as the city speeds up.
+An original, single-player 3D endless runner built with Streamlit and Three.js. Switch between three lanes, jump over barriers, slide under signs, and collect tokens as the city speeds up. The browser loads Three.js from jsDelivr, so an internet connection is required to play.
 
 ## Run locally
 
